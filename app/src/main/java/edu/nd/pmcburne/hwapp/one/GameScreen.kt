@@ -304,7 +304,7 @@ fun FinalContent(game: GameEntity, gender: String) {
         HorizontalDivider(color = Color(0xFFF0F0F0))
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "🏆 $winnerName wins!",
+            text = "$winnerName wins!",
             color = Orange,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
