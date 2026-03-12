@@ -11,6 +11,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+import android.util.Log
+
+
 class GameRepository(private val context: Context) {
 
     private val dao = AppDatabase.getDatabase(context).gameDao()
@@ -19,6 +22,8 @@ class GameRepository(private val context: Context) {
         return if (isOnline()) {
             try {
                 val parts = date.split("-")
+                Log.d("BBALL", "Fetching: gender=$gender, year=${parts[0]}, month=${parts[1]}, day=${parts[2]}")
+
                 val response = RetrofitInstance.api.getScoreboard(
                     gender = gender,
                     year = parts[0],
@@ -26,11 +31,16 @@ class GameRepository(private val context: Context) {
                     day = parts[2]
                 )
 
-                val entities = response.events.mapNotNull { event ->
-                    val comp = event.competitions.firstOrNull() ?: return@mapNotNull null
-                    val home = comp.competitors.find { it.homeAway == "home" } ?: return@mapNotNull null
-                    val away = comp.competitors.find { it.homeAway == "away" } ?: return@mapNotNull null
-                    val status = comp.status
+                val entities = (response.games ?: emptyList()).mapNotNull { wrapper ->
+                    val g = wrapper.game ?: return@mapNotNull null
+                    val home = g.home ?: return@mapNotNull null
+                    val away = g.away ?: return@mapNotNull null
+
+                    val state = when (g.gameState?.lowercase()) {
+                        "final" -> "post"
+                        "live", "in-progress", "inprogress" -> "in"
+                        else -> "pre"
+                    }
 
                     val winnerSide = when {
                         home.winner == true -> "home"
@@ -38,37 +48,37 @@ class GameRepository(private val context: Context) {
                         else -> ""
                     }
 
-                    val startTime = try {
-                        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'", Locale.US)
-                        sdf.timeZone = TimeZone.getTimeZone("UTC")
-                        val parsed: Date = sdf.parse(comp.date) ?: Date()
-                        val outSdf = SimpleDateFormat("h:mm a", Locale.US)
-                        outSdf.timeZone = TimeZone.getDefault()
-                        outSdf.format(parsed)
-                    } catch (e: Exception) { "" }
+                    Log.d("BBALL", "Game: ${away.names?.short} vs ${home.names?.short} | state=$state | finalMsg=${g.finalMessage}")
 
                     GameEntity(
-                        gameId = event.id,
+                        gameId = g.gameID,
                         gameDate = date,
                         gender = gender,
-                        homeTeam = home.team.displayName,
-                        awayTeam = away.team.displayName,
+                        homeTeam = home.names?.short ?: home.names?.char6 ?: "Home",
+                        awayTeam = away.names?.short ?: away.names?.char6 ?: "Away",
                         homeScore = home.score ?: "0",
                         awayScore = away.score ?: "0",
-                        state = status.type.state,
-                        period = status.period,
-                        displayClock = status.displayClock,
-                        startTime = startTime,
+                        state = state,
+                        period = 0,
+                        displayClock = g.contestClock ?: g.currentPeriod ?: "",
+                        startTime = g.startTime ?: "",
                         winnerSide = winnerSide
                     )
+
                 }
 
+
+                Log.d("BBALL", "Entities built: ${entities.size}")
                 dao.insertGames(entities)
                 entities
+
             } catch (e: Exception) {
+                Log.e("BBALL", "API call FAILED: ${e.message}")
+                e.printStackTrace()
                 dao.getGames(date, gender)
             }
         } else {
+            Log.d("BBALL", "No internet — loading from database")
             dao.getGames(date, gender)
         }
     }

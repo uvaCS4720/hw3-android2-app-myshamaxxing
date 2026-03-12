@@ -1,42 +1,33 @@
 package edu.nd.pmcburne.hwapp.one.data
 
 data class ApiResponse(
-    val events: List<Event>
+    val games: List<GameWrapper>? = null
 )
 
-data class Event(
-    val id: String,
-    val date: String,
-    val competitions: List<Competition>
+data class GameWrapper(
+    val game: GameData? = null
 )
 
-data class Competition(
-    val date: String,
-    val competitors: List<Competitor>,
-    val status: CompetitionStatus
+data class GameData(
+    val gameID: String = "",
+    val away: TeamData? = null,
+    val home: TeamData? = null,
+    val finalMessage: String? = null,
+    val gameState: String? = null,
+    val startTime: String? = null,
+    val startDate: String? = null,
+    val currentPeriod: String? = null,
+    val contestClock: String? = null
 )
 
-data class Competitor(
-    val homeAway: String,       // "home" or "away"
-    val winner: Boolean?,
-    val team: Team,
-    val score: String?
+data class TeamData(
+    val score: String? = null,
+    val names: TeamNames? = null,
+    val winner: Boolean? = null
 )
 
-data class Team(
-    val displayName: String,
-    val shortDisplayName: String?
-)
-
-data class CompetitionStatus(
-    val displayClock: String,   // e.g. "17:23"
-    val period: Int,            // half or quarter
-    val type: StatusType
-)
-
-data class StatusType(
-    val name: String,
-    val state: String,          // "pre"=upcoming, "in"=live, "post"=final
-    val completed: Boolean,
-    val description: String     // "Scheduled", "In Progress", "Final"
+data class TeamNames(
+    val char6: String? = null,
+    val short: String? = null,
+    val full: String? = null
 )
